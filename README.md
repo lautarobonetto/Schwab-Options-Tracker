@@ -1,8 +1,10 @@
-# Schwab Options Tracker (Lightweight Edition)
+# Options Tracker for Schwab (Lightweight Edition)
 
 ## Project Overview
 
 A specialized, self-hosted web application designed to track, group, and analyze advanced options strategies—specifically **Naked Puts** and **The Wheel**—using the Charles Schwab API.
+
+This project is not affiliated with, funded, or in any way associated with Charles Schwab & Co., Inc.
 
 ## Key Problem Solved
 

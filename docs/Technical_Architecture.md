@@ -1,4 +1,4 @@
-# Technical Architecture Document: Schwab Options Tracker
+# Technical Architecture Document: Options Tracker for Schwab
 
 **Version:** 1.0
 
