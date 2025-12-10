@@ -1,24 +1,35 @@
-from datetime import datetime, timedelta
-from typing import Optional, Any, Union
-from jose import jwt
-from passlib.context import CryptContext
+from cryptography.fernet import Fernet
+import base64
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-ALGORITHM = "HS256"
-
-def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+def get_fernet_key() -> bytes:
+    """
+    Derives a 32-byte URL-safe base64-encoded key from the SECRET_KEY.
+    Fernet requires a 32-byte key.
+    """
+    # Simple derivation: pad or truncate SECRET_KEY to 32 bytes then urlsafe_b64encode
+    # Note: In production, better key management is advised.
+    key = settings.SECRET_KEY.encode()
+    if len(key) < 32:
+        key = key + b"=" * (32 - len(key))
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-    to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+        key = key[:32]
+    return base64.urlsafe_b64encode(key)
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+_fernet = Fernet(get_fernet_key())
 
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+def encrypt_token(token: str) -> str:
+    """Encrypts a token string."""
+    if not token:
+        return ""
+    return _fernet.encrypt(token.encode()).decode()
+
+def decrypt_token(encrypted_token: str) -> str:
+    """Decrypts a token string."""
+    if not encrypted_token:
+        return ""
+    try:
+        return _fernet.decrypt(encrypted_token.encode()).decode()
+    except Exception:
+        # In case of decryption failure (e.g. key change), return empty or handle error
+        return ""
