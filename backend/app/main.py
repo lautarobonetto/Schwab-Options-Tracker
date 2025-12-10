@@ -1,8 +1,16 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import os
+from contextlib import asynccontextmanager
+from app.services.scheduler import SchedulerService
 
-app = FastAPI(title="Schwab Options Tracker")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = SchedulerService()
+    scheduler.start()
+    yield
+
+app = FastAPI(title="Schwab Options Tracker", lifespan=lifespan)
 
 # Mount static files (Frontend)
 # In development, we might not use this if running Vite separately, but for the Docker build it is needed.

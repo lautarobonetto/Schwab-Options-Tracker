@@ -15,9 +15,8 @@ class Settings(BaseSettings):
     SCHWAB_APP_KEY: str = ""
     SCHWAB_APP_SECRET: str = ""
     REDIRECT_URI: str = "https://127.0.0.1:8000/api/auth/callback" # Example
+    ENCRYPTION_KEY: str = ""
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 settings = Settings()

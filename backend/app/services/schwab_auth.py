@@ -83,3 +83,55 @@ class SchwabAuthService:
         
         db.commit()
         db.refresh(auth_token)
+
+    @staticmethod
+    async def get_active_token(db: Session) -> str:
+        """
+        Retrieves a valid access token. 
+        If it's expired or about to expire (< 5 mins), it refreshes it first.
+        """
+        auth_token = db.query(AuthToken).first()
+        if not auth_token:
+            return None
+
+        # Check expiry (buffer of 5 minutes)
+        if auth_token.expires_at <= datetime.utcnow() + timedelta(minutes=5):
+            print("Token expired or close to expiry. Refreshing...")
+            return await SchwabAuthService.refresh_access_token(db, auth_token)
+        
+        from app.core.security import decrypt_token
+        return decrypt_token(auth_token.access_token)
+
+    @staticmethod
+    async def refresh_access_token(db: Session, auth_token: AuthToken) -> str:
+        """Uses the refresh_token to obtain a new access_token."""
+        from app.core.security import decrypt_token
+        
+        refresh_token_plain = decrypt_token(auth_token.refresh_token)
+        if not refresh_token_plain:
+            print("No refresh token available.")
+            return None
+
+        headers = {
+            'Authorization': f'Basic {base64.b64encode(f"{settings.SCHWAB_APP_KEY}:{settings.SCHWAB_APP_SECRET}".encode()).decode()}',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token_plain
+        }
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(f"{SchwabAuthService.BASE_URL}/token", headers=headers, data=data)
+                response.raise_for_status()
+                token_data = response.json()
+                
+                # Update DB with new tokens
+                SchwabAuthService.store_tokens(db, token_data)
+                
+                return token_data.get("access_token")
+            except httpx.HTTPError as e:
+                print(f"Failed to refresh token: {e}")
+                # Ideally, log this error properly
+                return None
